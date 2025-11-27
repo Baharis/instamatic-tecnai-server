@@ -3,7 +3,7 @@ from utils.config import config
 _conf = config()
 _tem_interfaces = ('simulate', 'tecnai')
 
-__all__ = ['get_microscope', 'get_microscope_class']
+__all__ = ['get_camera', 'get_microscope', 'get_microscope_class']
 
 
 def get_microscope_class(interface: str):
@@ -39,3 +39,9 @@ def get_microscope(name: str = None):
     tem = cls(name=name)
 
     return tem
+
+
+def get_camera(name: str = None):
+    """Loads specifically the built-in camera interface, ignoring name."""
+    from .tecnai_camera import TecnaiCamera
+    return TecnaiCamera(name=name)

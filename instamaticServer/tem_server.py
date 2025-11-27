@@ -6,10 +6,10 @@ import threading
 import time
 import traceback
 
-from TEMController.microscope import get_microscope
+from TEMController.microscope import get_camera, get_microscope
 from serializer import dumper, loader
 from utils.config import config
-from typing import Any, List, Tuple, Type
+from typing import Any, Type, Callable
 
 stop_program_event = threading.Event()
 
@@ -33,6 +33,7 @@ class DeviceServer(threading.Thread):
 
     device_abbr: str
     device_kind: str
+    device_getter: Callable
     requests: queue.Queue
     responses: queue.Queue
     host: str = 'localhost'
@@ -42,13 +43,13 @@ class DeviceServer(threading.Thread):
         super().__init__()
         self._name = name  # self.name is a reserved parameter for threads
         self.logger = logging.getLogger(self.device_abbr + 'S')  # temS/camS server
-        self.tem = None
+        self.device = None
         self.verbose = False
 
     def run(self) -> None:
         """Start the server thread."""
-        self.tem = get_microscope(name=self._name)
-        self._name = self.tem.name
+        self.device = self.device_getter(name=self._name)
+        self._name = self.device.name
         self.logger.info('Initialized %s %s server thread', self.device_kind, self._name)
 
         while True:
@@ -79,10 +80,10 @@ class DeviceServer(threading.Thread):
         self.logger.info('Terminating %s %s server thread', self.device_kind, self._name)
 
     def evaluate(self, func_name: str, args: list, kwargs: dict) -> Any:
-        """Evaluate the function `func_name` on `self.tem` and call it with
+        """Evaluate the function `func_name` on `self.device` and call it with
         `args` and `kwargs`."""
         self.logger.debug('eval %s %s %s', func_name, args, kwargs)
-        f = getattr(self.tem, func_name)
+        f = getattr(self.device, func_name)
         ret = f(*args, **kwargs)
         return ret
 
@@ -92,6 +93,7 @@ class TemServer(DeviceServer):
 
     device_abbr: str = 'tem'
     device_kind: str = 'microscope'
+    device_getter = get_microscope
     requests = queue.Queue(maxsize=1)
     responses = queue.Queue(maxsize=1)
     host = _conf.default_settings['tem_server_host']
@@ -103,6 +105,7 @@ class CamServer(DeviceServer):
 
     device_abbr: str = 'cam'
     device_kind: str = 'camera'
+    device_getter = get_camera
     requests = queue.Queue(maxsize=1)
     responses = queue.Queue(maxsize=1)
     host = _conf.default_settings['cam_server_host']
@@ -120,13 +123,13 @@ def handle(conn: socket.socket, server_type: Type[DeviceServer]) -> None:
         while True:
             if stop_program_event.is_set():
                 break
-            
+
             data = conn.recv(BUFSIZE)
             if not data:
                 break
 
             data = loader(data)
-            
+
             if data == 'exit' or data == 'kill':
                 break
 
@@ -205,7 +208,7 @@ def main() -> None:
     if options.camera:
         logging.info('Waiting for the TEM singleton to initialize')
         for _ in range(100):
-            if getattr(tem_server, 'tem') is not None:  # wait until TEM initialized
+            if getattr(tem_server, 'device') is not None:  # wait until TEM initialized
                 break
             time.sleep(0.05)
         else:  # necessary check, Error extremely unlikely, TEM typically starts in ms
