@@ -13,7 +13,7 @@ class NS(SimpleNamespace):
         return getattr(self, key, default)
 
 
-def dict_to_namespace(d: Dict) -> NS[Any]:
+def dict_to_namespace(d: Dict) -> NS:
     """Recursively converts a dictionary into a SimpleNamespace."""
     if isinstance(d, dict):
         return NS(**{k: dict_to_namespace(v) for k, v in d.items()})
