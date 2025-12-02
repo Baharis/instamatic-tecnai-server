@@ -1,5 +1,5 @@
-microscope: tecnaiG2
-camera: simulate
+microscope: simulate_tem
+camera: simulate_cam
 calibration: simulate
 
 # Global toggle to force simulated camera/microscope interface
@@ -11,10 +11,10 @@ flatfield:
 
 # Run the TEM connection in a different process (recommended)
 use_tem_server: True
-tem_server_host: '169.254.178.125'
+tem_server_host: 'localhost'
 tem_server_port: 8088
 tem_require_admin: False
-tem_communication_protocol: 'pickle'  # pickle, json, msgpack, yaml
+tem_communication_protocol: pickle  # pickle, json, msgpack, yaml
 
 # Run the Camera connection in a different process
 use_cam_server: False

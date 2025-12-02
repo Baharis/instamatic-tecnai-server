@@ -2,13 +2,23 @@ import threading
 import comtypes
 from typing import Union
 
+
+from instamaticServer.utils.types import StagePositionTuple
+
+
 class TecnaiStageThread(threading.Thread):
     """
     Stage communication with the Tecnai microscope over a separate thread.
     """
     
-    def __init__(self, tem=None, pos:(float, float, float, float, float)=None, axis:int=None, speed:Union[int, float]=0):
-        super().__init__()
+    def __init__(
+            self,
+            tem = None,
+            pos: StagePositionTuple = None,
+            axis: int = None,
+            speed: Union[int, float] = 0,
+    ):
+        super().__init__(name='TecnaiStageThread')
 
         #TEM-Scriptinginterface
         self._tem = tem
@@ -59,7 +69,7 @@ class TecnaiStageThread(threading.Thread):
                 self._tem.Stage.GoToWithSpeed(stagePos, self._axis, self._speed)
 
 class ContextManagedComtypes():
-    '''The Context Manager Protocoll is used to initialize the COM connection again'''
+    """The Context Manager Protocol is used to initialize the COM connection again"""
     def __enter__(self):
         comtypes.CoInitialize()
         return self

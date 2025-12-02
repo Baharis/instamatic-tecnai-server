@@ -6,10 +6,13 @@ import threading
 import time
 import traceback
 
-from TEMController.microscope import get_camera, get_microscope
-from serializer import dumper, loader
-from utils.config import config
 from typing import Any, Type, Callable
+
+from instamaticServer.TEMController.camera import get_camera
+from instamaticServer.TEMController.microscope import get_microscope
+from instamaticServer.serializer import dumper, loader
+from instamaticServer.utils.config import config
+
 
 stop_program_event = threading.Event()
 
@@ -31,26 +34,26 @@ class DeviceServer(threading.Thread):
     them in order, and return the result via each client's `response_queue`.
     """
 
-    device_abbr: str
-    device_kind: str
-    device_getter: Callable
-    requests: queue.Queue
-    responses: queue.Queue
-    host: str = 'localhost'
-    port: int
+    device_abbr = None    # type: str
+    device_kind = None    # type: str
+    device_getter = None  # type: Callable
+    requests = None       # type: queue.Queue   
+    responses = None      # type: queue.Queue
+    host = 'localhost'    # type: str
+    port = None           # type: int
 
-    def __init__(self, name=None) -> None:
-        super().__init__()
-        self._name = name  # self.name is a reserved parameter for threads
+    def __init__(self, name = None) -> None:
+        super().__init__(name=self.device_kind + '_server')
+        self.interface_name = name
         self.logger = logging.getLogger(self.device_abbr + 'S')  # temS/camS server
         self.device = None
         self.verbose = False
 
     def run(self) -> None:
         """Start the server thread."""
-        self.device = self.device_getter(name=self._name)
-        self._name = self.device.name
-        self.logger.info('Initialized %s %s server thread', self.device_kind, self._name)
+        self.device = self.device_getter(name=self.interface_name)
+        self.device.get_attrs = self.get_attrs
+        self.logger.info('Initialized %s %s server thread', self.device_kind, self.device.name)
 
         while True:
             now = datetime.datetime.now().strftime('%H:%M:%S.%f')
@@ -84,16 +87,27 @@ class DeviceServer(threading.Thread):
         `args` and `kwargs`."""
         self.logger.debug('eval %s %s %s', func_name, args, kwargs)
         f = getattr(self.device, func_name)
-        ret = f(*args, **kwargs)
-        return ret
+        return f(*args, **kwargs) if callable(f) else f
+
+    def get_attrs(self):
+        """Get attributes from cam object to update __dict__ on client side."""
+        attrs = {}
+        for item in dir(self.device):
+            if item.startswith('_'):
+                continue
+            obj = getattr(self.device, item)
+            if not callable(obj):
+                attrs[item] = type(obj)
+
+        return attrs
 
 
 class TemServer(DeviceServer):
     """TEM communcation server."""
 
-    device_abbr: str = 'tem'
-    device_kind: str = 'microscope'
-    device_getter = get_microscope
+    device_abbr = 'tem'
+    device_kind = 'microscope'
+    device_getter = staticmethod(get_microscope)
     requests = queue.Queue(maxsize=1)
     responses = queue.Queue(maxsize=1)
     host = _conf.default_settings['tem_server_host']
@@ -103,9 +117,9 @@ class TemServer(DeviceServer):
 class CamServer(DeviceServer):
     """FEI Tecnai/Titan Acquisition camera communication server."""
 
-    device_abbr: str = 'cam'
-    device_kind: str = 'camera'
-    device_getter = get_camera
+    device_abbr = 'cam'
+    device_kind = 'camera'
+    device_getter = staticmethod(get_camera)
     requests = queue.Queue(maxsize=1)
     responses = queue.Queue(maxsize=1)
     host = _conf.default_settings['cam_server_host']
@@ -120,11 +134,16 @@ def handle(conn: socket.socket, server_type: Type[DeviceServer]) -> None:
     """Handle incoming connection, put command on the Queue `q`, which is then
     handled by TEMServer."""
     with conn:
+        conn.settimeout(TIMEOUT)
         while True:
             if stop_program_event.is_set():
                 break
 
-            data = conn.recv(BUFSIZE)
+            try:
+                data = conn.recv(BUFSIZE)
+            except socket.timeout:
+                continue
+
             if not data:
                 break
 
@@ -135,7 +154,8 @@ def handle(conn: socket.socket, server_type: Type[DeviceServer]) -> None:
 
             server_type.requests.put(data)
             response = server_type.responses.get()
-            conn.send(dumper(response))
+            serialized = dumper(response)
+            conn.sendall(serialized)
 
 
 def listen(server_type: Type[DeviceServer]) -> None:
@@ -145,7 +165,7 @@ def listen(server_type: Type[DeviceServer]) -> None:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as device_client:
         device_client.bind((server_type.host, server_type.port))
         device_client.settimeout(TIMEOUT)
-        device_client.listen(0)
+        device_client.listen(1)
         logger.info('Server listening on %s:%s', server_type.host, server_type.port)
         while True:
             if stop_program_event.is_set():
@@ -200,7 +220,7 @@ def main() -> None:
     tem_server = TemServer(name=options.microscope)
     tem_server.start()
 
-    tem_listener = threading.Thread(target=listen, args=(TemServer,))
+    tem_listener = threading.Thread(target=listen, args=(TemServer,), name='tem_listener')
     tem_listener.start()
 
     threads = [tem_server, tem_listener]
@@ -214,10 +234,10 @@ def main() -> None:
         else:  # necessary check, Error extremely unlikely, TEM typically starts in ms
             raise RuntimeError('Could not start TEM device on server in 5 seconds')
 
-        cam_server = CamServer(name=None)
+        cam_server = CamServer(name=options.microscope)
         cam_server.start()
 
-        cam_listener = threading.Thread(target=listen, args=(CamServer,))
+        cam_listener = threading.Thread(target=listen, args=(CamServer,), name='cam_listener')
         cam_listener.start()
 
         threads.extend([cam_server, cam_listener])

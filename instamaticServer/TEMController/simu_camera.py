@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import atexit
 import logging
+import time
 from typing import Tuple, Any, Optional, List
 
-from instamaticServer.TEMController.tecnai_microscope import TecnaiMicroscope
 from instamaticServer.utils.config import config
 from instamaticServer.utils.singleton import Singleton
 
@@ -17,8 +17,8 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
-class TecnaiCamera(metaclass=Singleton):
-    """Interfaces any camera on an FEI Tecnai/Titan microscope."""
+class SimuCamera(metaclass=Singleton):
+    """Simple class that simulates the camera interface and mocks the method calls."""
 
     streamable = True
 
@@ -32,12 +32,12 @@ class TecnaiCamera(metaclass=Singleton):
     stretch_amplitude = None           # type: float
     stretch_azimuth = None             # type: float
 
-    def __init__(self, name='tecnai'):
+    def __init__(self, name='simulate'):
         """Initialize camera module."""
         self.name = name
         self.load_defaults()
-        self.acq, self.cam = self.establish_connection()
-        logger.info(f'Camera Tecnai initialized')
+        self.establish_connection()
+        logger.info(f'Camera simulate initialized')
         atexit.register(self.release_connection)
 
     def __enter__(self):
@@ -61,20 +61,27 @@ class TecnaiCamera(metaclass=Singleton):
         for key, val in _conf.camera.__dict__.items():
             setattr(self, key, val)
 
-    def get_image(self, exposure: Optional[float] = None, binning: int = 1):
+    def get_image(self, exposure: Optional[float] = None, binsize: int = 1):
         """Image acquisition interface."""
-        self.cam.AcqParams.ExposureTime = exposure or self.default_exposure
-        self.cam.AcqParams.Binning = binning
-        img = self.acq.AcquireImages()[0]
-        sa = img.AsSafeArray
+        exposure = exposure or self.default_exposure
+        binsize = binsize or self.default_binsize
+        t0 = time.perf_counter()
+        dx, dy = self.dimensions
+        dx, dy = dx // binsize, dy // binsize
         if np:
-            return np.stack(sa).T
-        return [[sa[r, c] for c in range(img.Height)] for r in range(img.Width)]
-        # try [[sa.GetElement([r, c]) or similar if direct indexing does not work...
+            img = 256 * np.random.random_sample((dx, dy))
+        else:
+            import random
+            v = list(range(0, 256))
+            img = [random.sample(v, dx) for _ in range(dy)]
+        while time.perf_counter() - t0 < exposure:
+            time.sleep(0.001)
+        return img
 
     def get_image_dimensions(self) -> Tuple[int, int]:
         """Get the binned dimensions reported by the camera."""
-        return self.cam.ImageSize
+        dx, dy = self.dimensions
+        return dx // self.default_binsize, dy // self.default_binsize
 
     def get_movie(
             self,
@@ -87,13 +94,7 @@ class TecnaiCamera(metaclass=Singleton):
 
     def establish_connection(self) -> Tuple[Any, Any]:
         """Establish connection to the camera."""
-        acq = TecnaiMicroscope()._tem.Acquisition()
-        acq.RemoveAllAcqDevices()
-        cam = acq.Cameras[0]
-        cam.AcqParams.ImageCorrection = 1  # bias and gain corr (0=off, 1=on)
-        cam.AcqParams.ImageSize = 0  # sub area centered (0=full, 1=half, 2=quarter)
-        acq.AddAcqDeviceByName(cam.Info.Name)
-        return acq, cam
+        pass
 
     def release_connection(self) -> None:
         """Release the connection to the camera."""
@@ -101,7 +102,7 @@ class TecnaiCamera(metaclass=Singleton):
 
 
 if __name__ == '__main__':
-    cam = TecnaiCamera()
+    cam = SimuCamera()
     from IPython import embed
 
     embed()

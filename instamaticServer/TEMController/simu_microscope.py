@@ -2,9 +2,9 @@ import random
 import time
 from typing import Optional, Tuple, Union
 
-from .typing import StagePositionTuple, float_deg, int_nm
-from utils.exceptions import TEMValueError
-from utils.config import config
+from instamaticServer.utils.config import config
+from instamaticServer.utils.exceptions import TEMValueError
+from instamaticServer.utils.types import StagePositionTuple, float_deg, int_nm
 
 
 NTRLMAPPING = {
@@ -535,7 +535,7 @@ class SimuMicroscope:
         self.intermediatelensstigmator_y = y
 
     def getObjectiveLensStigmator(self) -> Tuple[int, int]:
-        return self.objectivelensstigmator_x, self.objectivelensstigmatir_y
+        return self.objectivelensstigmator_x, self.objectivelensstigmator_y
 
     def setObjectiveLensStigmator(self, x: int, y: int):
         self.objectivelensstigmator_x = x

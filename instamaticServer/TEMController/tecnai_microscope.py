@@ -5,10 +5,11 @@ import comtypes.client
 from math import pi
 from typing import Optional
 
-from .typing import StagePositionTuple, float_deg, int_nm
-from utils.exceptions import FEIValueError, TEMCommunicationError
-from utils.config import config
-from TEMController.tecnai_stage_thread import TecnaiStageThread
+from instamaticServer.TEMController.tecnai_stage_thread import TecnaiStageThread
+from instamaticServer.utils.config import config
+from instamaticServer.utils.exceptions import FEIValueError, TEMCommunicationError
+from instamaticServer.utils.singleton import Singleton
+from instamaticServer.utils.types import StagePositionTuple, float_deg, int_nm
 
 
 _FUNCTION_MODES = {1: 'lowmag', 2: 'mag1', 3: 'samag', 4: 'mag2', 5: 'LAD', 6: 'diff'}
@@ -23,15 +24,6 @@ _FUNCTION_MODES = {1: 'lowmag', 2: 'mag1', 3: 'samag', 4: 'mag2', 5: 'LAD', 6: '
 #                   ('Mi', [2250, 3500, 4400]),
 #                   ('SA', [6200, 8700, 13500, 17000, 26000, 34000, 38000, 63000, 86000, 125000, 175000, 250000, 350000, 400000]),
 #                   ('Mh', [440000, 520000, 610000, 700000, 780000, 910000])])
-
-
-class Singleton(type):
-    """Singleton Metaclass from Stack Overflow, stackoverflow.com/q/6760685"""
-    _instances = {}
-    def __call__(cls, *args, **kwargs):
-        if cls not in cls._instances:
-            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
-        return cls._instances[cls]
 
 
 class TecnaiMicroscope(metaclass=Singleton):
@@ -59,7 +51,7 @@ class TecnaiMicroscope(metaclass=Singleton):
             time.sleep(1)
             self._t += 1
             if self._t > 3:
-                print('Waiting for microscope, t = %ss' % (self._t))
+                print('Waiting for microscope, t = %ss' % self._t)
             if self._t > 30:
                 raise TEMCommunicationError('Cannot establish microscope connection (timeout).')
 

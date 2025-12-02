@@ -1,7 +1,7 @@
 import json
 import pickle
 
-from utils.config import config
+from instamaticServer.utils.config import config
 
 _conf = config()
 PROTOCOL = _conf.default_settings['tem_communication_protocol']

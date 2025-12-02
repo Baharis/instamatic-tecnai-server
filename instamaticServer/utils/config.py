@@ -1,6 +1,6 @@
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Dict, Any
+from typing import Dict
 
 import yaml
 
@@ -25,7 +25,7 @@ class config:
     def __init__(self, name:str=None):
         self.default_settings = self.settings()
 
-        if name != None:
+        if name is not None:
             self.default_settings['microscope'] = name
 
         self.micr_interface, self.micr_wavelength, self.micr_ranges = self.microscope()
@@ -45,7 +45,7 @@ class config:
         """load the microscope.yaml file."""
         directory = Path(__file__).resolve().parent
         file = directory / (str(self.default_settings['microscope']) + '.yaml')
-        with open(file, 'r') as stream:
+        with open(str(file), 'r') as stream:
             default = yaml.safe_load(stream)
 
         interface = default['interface']
@@ -57,7 +57,7 @@ class config:
     def load_camera_config(self) -> NS:
         directory = Path(__file__).resolve().parent
         file = directory / (str(self.default_settings['camera']) + '.yaml')
-        with open(file, 'r') as stream:
+        with open(str(file), 'r') as stream:
             return dict_to_namespace(yaml.safe_load(stream))
 
 
