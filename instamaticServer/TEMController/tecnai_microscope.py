@@ -327,7 +327,6 @@ class TecnaiMicroscope(metaclass=Singleton):
     def setBeamAlignShift(self, x: float, y: float) -> None:
         """set Gun-Shift values."""
         self.setGunShift(x, y)
-
         
     ###Illumination
     def getSpotSize(self) -> int:
