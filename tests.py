@@ -5,7 +5,6 @@ import socket
 import threading
 import time
 import unittest
-from typing import Any, Dict
 
 from instamaticServer.TEMController.simu_microscope import SimuMicroscope
 from instamaticServer.utils.config import NS, config, dict_to_namespace
@@ -55,7 +54,7 @@ class TestSerializers(unittest.TestCase):
 class TestServer(unittest.TestCase):
 
     @classmethod
-    def setUpClass(cls) -> None:
+    def setUpClass(cls):
         from instamaticServer.tem_server import CamServer, TemServer, listen
         cls.tem_server = TemServer()
         cls.tem_server.start()
@@ -95,16 +94,16 @@ class TestServer(unittest.TestCase):
         # atexit.register(cls.socket_cam.close)
 
     @classmethod
-    def tearDownClass(cls) -> None:
+    def tearDownClass(cls):
         stop_program_event.set()
         for thread in cls.threads:
             thread.join(timeout=5)
             if thread.is_alive():
-                print(f"Thread {thread.name} did not exit")
+                print('Thread %s did not exit' % thread.name)
         cls.socket_tem.close()
 
     @staticmethod
-    def socket_send(s: socket.socket, func: str, args = (), kwargs = None):
+    def socket_send(s, func, args = (), kwargs = None):
         from instamaticServer.serializer import dumper, loader
         from instamaticServer.utils.exceptions import TEMCommunicationError, exception_list
         kwargs = kwargs or {}
@@ -112,13 +111,13 @@ class TestServer(unittest.TestCase):
         buffer_size = 1024
         if func in ('get_image', 'get_movie'):
             buffer_size += 8 * _conf.camera.dimensions[0] * _conf.camera.dimensions[1]
-        s.send(dumper(d))
+        s.sendall(dumper(d))
         response = s.recv(buffer_size)
         if response:
             for _ in range(10):  # warrants all image/movie is collected
                 try:
                     status, data = loader(response)
-                except (pickle.UnpicklingError, json.JSONDecodeError, RuntimeError):
+                except (pickle.UnpicklingError, ValueError, RuntimeError):
                     response += s.recv(buffer_size)
                 else:
                     break
@@ -132,10 +131,10 @@ class TestServer(unittest.TestCase):
         else:
             raise ConnectionError('Unknown status code: %s' % status)
 
-    def tem_send(self, func: str, args = (), kwargs = None):
+    def tem_send(self, func, args = (), kwargs = None):
         return self.socket_send(self.socket_tem, func, args, kwargs)
 
-    def cam_send(self, func: str, args = (), kwargs = None):
+    def cam_send(self, func, args = (), kwargs = None):
         return self.socket_send(self.socket_cam, func, args, kwargs)
 
     def test_20_getHolderType(self):

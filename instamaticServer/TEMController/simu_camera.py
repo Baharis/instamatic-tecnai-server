@@ -37,7 +37,7 @@ class SimuCamera(metaclass=Singleton):
         self.name = name
         self.load_defaults()
         self.establish_connection()
-        logger.info(f'Camera simulate initialized')
+        logger.info('Camera simulate initialized')
         atexit.register(self.release_connection)
 
     def __enter__(self):
