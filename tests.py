@@ -7,7 +7,7 @@ import unittest
 
 from instamaticServer.TEMController.simu_microscope import SimuMicroscope
 from instamaticServer.utils.config import NS, config, dict_to_namespace
-from instamaticServer.tem_server import stop_program_event
+from tem_server import stop_program_event
 
 _conf_dict = {'a': 1, 'b': {'c': 3, 'd': 4}}
 _conf = config()
@@ -54,7 +54,7 @@ class TestServer(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        from instamaticServer.tem_server import CamServer, TemServer, listen
+        from tem_server import CamServer, TemServer, listen
         cls.tem_server = TemServer()
         cls.tem_server.start()
         cls.tem_listener = threading.Thread(target=listen, args=(TemServer,), name='tem_listener')
@@ -93,7 +93,6 @@ class TestServer(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        print('TEARDOWN???')
         stop_program_event.set()
         while cls.threads:
             thread = cls.threads.pop(0)
@@ -129,13 +128,17 @@ class TestServer(unittest.TestCase):
         s.sendall(dumper(d))
         response = s.recv(buffer_size)
         if response:
-            for _ in range(10):  # warrants all image/movie is collected
+            for _ in range(100):  # warrants all image/movie is collected
                 try:
                     status, data = loader(response)
-                except (pickle.UnpicklingError, ValueError, RuntimeError):
+                except (pickle.UnpicklingError, EOFError, ValueError):
                     response += s.recv(buffer_size)
+                    time.sleep(0.01)
                 else:
                     break
+            else:
+                status = 500
+                data = (None, None)
         else:
             raise RuntimeError('Received empty response when evaluating %s' % d)
         if status == 200:
@@ -155,7 +158,8 @@ class TestServer(unittest.TestCase):
     def test_20_getHolderType(self):
         r = self.tem_send('getHolderType')
         if not isinstance(self.tem_server.device, SimuMicroscope):
-            self.assertIsInstance(r, self.const.StageHolderType)
+            self.assertIsInstance(r, int)
+            self.assertIn(r,list(self.const.StageHolderType.values()))
 
     def test_21_getStagePosition(self):
         r = self.tem_send('getStagePosition')
@@ -200,7 +204,14 @@ class TestServer(unittest.TestCase):
 
     def test_32_setStagePosition(self):
         self.tem_send('setStagePosition', (10000, 10000, 0, 0, 0))
+        self.tem_send('getStagePosition')
         self.tem_send('setStagePosition', kwargs={'z': 10000})
+        r = self.tem_send('getStagePosition')
+        self.assertAlmostEqual(r[2], 10000, delta=PRECISION_NM)
+        self.tem_send('setStagePosition', kwargs={'z': 0})
+        r = self.tem_send('getStagePosition')
+        self.assertAlmostEqual(r[2], 0, delta=PRECISION_NM)
+        self.tem_send('setStagePosition', (10000, 10000, 10000, 0, 0))
         r = self.tem_send('getStagePosition')
         self.assertAlmostEqual(r[0], 10000, delta=PRECISION_NM)
         self.assertAlmostEqual(r[1], 10000, delta=PRECISION_NM)
@@ -215,11 +226,11 @@ class TestServer(unittest.TestCase):
     def test_35_setStagePosition(self):
         self.tem_send('setStagePosition', (0, 0, 0, 0, 0))
         t0 = time.perf_counter()
-        self.tem_send('setStagePosition', kwargs={'x': 1000})
+        self.tem_send('setStagePosition', kwargs={'x': 5000})
         t1 = time.perf_counter()
         self.tem_send('setStagePosition', kwargs={'x': 0, 'speed': 0.1})
         t2 = time.perf_counter()
-        self.tem_send('setStagePosition', kwargs={'x': 1000, 'speed': 0.05})
+        self.tem_send('setStagePosition', kwargs={'x': 5000, 'speed': 0.05})
         t3 = time.perf_counter()
         self.tem_send('setStagePosition', kwargs={'x': 0, 'speed': 0.02})
         t4 = time.perf_counter()
@@ -249,7 +260,8 @@ class TestServer(unittest.TestCase):
         t0 = time.perf_counter()
         self.tem_send('setStagePosition', kwargs={'a': 30, 'wait': False})
         t1 = time.perf_counter()
-        self.tem_send('waitForStage', kwargs={'delay': 0.01})
+        time.sleep(0.1)
+        self.tem_send('waitForStage')
         t2 = time.perf_counter()
         q = {'a': 0, 'wait': True}
         self.tem_send('setStagePosition', kwargs=q)
@@ -285,6 +297,7 @@ class TestServer(unittest.TestCase):
         t0 = time.perf_counter()
         self.tem_send('setStageA', kwargs={'value': 10, 'wait': False})
         t1 = time.perf_counter()
+        time.sleep(0.1)
         self.tem_send('waitForStage', kwargs={'delay': 0.01})
         t2 = time.perf_counter()
         self.tem_send('setStageA', kwargs={'value': 0, 'wait': True})

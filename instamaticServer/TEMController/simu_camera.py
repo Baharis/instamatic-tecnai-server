@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import atexit
 import logging
 import time
@@ -72,8 +70,7 @@ class SimuCamera(metaclass=Singleton):
             img = 256 * np.random.random_sample((dx, dy))
         else:
             import random
-            v = list(range(0, 256))
-            img = [random.sample(v, dx) for _ in range(dy)]
+            img = [[random.randint(0, 255) for _ in range(dx)] for _ in range(dy)]
         while time.perf_counter() - t0 < exposure:
             time.sleep(0.001)
         return img
