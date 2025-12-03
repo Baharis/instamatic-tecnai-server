@@ -12,18 +12,9 @@ from instamaticServer.utils.singleton import Singleton
 from instamaticServer.utils.types import StagePositionTuple, float_deg, int_nm
 
 
+logger = logging.getLogger('tem')
+
 _FUNCTION_MODES = {1: 'lowmag', 2: 'mag1', 3: 'samag', 4: 'mag2', 5: 'LAD', 6: 'diff'}
-
-#diff=D, LAD=LAD, lowmag=LM, mag1=Mi, samag=SA, mag2=Mh in Functionmodes
-
-
-
-#dict([('D', [0.0265, 0.035, 0.044, 0.062, 0.071, 0.089, 0.135, 0.175, 0.265, 0.43, 0.6, 0.86, 1.65, 2.65, 3.5, 4.1]),
-#                   ('LAD', [4.5, 7.1, 9, 12.5, 18, 27, 36, 53, 71, 81, 130, 180, 245, 360, 530, 720, 790, 810, 960, 1100, 1300]),
-#                   ('LM', [19, 25, 35, 50, 65, 82, 105, 145, 200, 300, 390, 500, 730, 980, 1350, 1850]),
-#                   ('Mi', [2250, 3500, 4400]),
-#                   ('SA', [6200, 8700, 13500, 17000, 26000, 34000, 38000, 63000, 86000, 125000, 175000, 250000, 350000, 400000]),
-#                   ('Mh', [440000, 520000, 610000, 700000, 780000, 910000])])
 
 
 class TecnaiMicroscope(metaclass=Singleton):
@@ -36,11 +27,9 @@ class TecnaiMicroscope(metaclass=Singleton):
         except:
             raise
 
-        print('FEI Scripting initializing...')
-        ## TEM interfaces the GUN, stage etc
+        logger.info('FEI Scripting initializing...')
+        ## TEM interfaces the GUN, stage etc. + enum constants
         self._tem = comtypes.client.CreateObject('TEMScripting.Instrument', comtypes.CLSCTX_ALL)
-
-        ## TEM enum constants
         self._tem_constant = comtypes.client.Constants(self._tem)
 
         self._t = 0
@@ -51,12 +40,11 @@ class TecnaiMicroscope(metaclass=Singleton):
             time.sleep(1)
             self._t += 1
             if self._t > 3:
-                print('Waiting for microscope, t = %ss' % self._t)
+                logger.info('Waiting for microscope, t = %ss' % self._t)
             if self._t > 30:
                 raise TEMCommunicationError('Cannot establish microscope connection (timeout).')
 
-        self._logger = logging.getLogger(__name__)
-        self._logger.info('Microscope connection established')
+        logger.info('Microscope Tecnai connection established')
         #close the network connection
         atexit.register(TecnaiMicroscope.release_connection)
 
@@ -88,7 +76,7 @@ class TecnaiMicroscope(metaclass=Singleton):
 
     def getStageSpeed(self) -> float:
         """Return Stagespeed, can not be read on Tecnai = constant(0.5)."""
-        print('StageSpeed can not be read on Tecnai')        
+        logger.info('StageSpeed can not be read on Tecnai')
         return 0.5
 
     def is_goniotool_available(self) -> bool:
@@ -240,11 +228,11 @@ class TecnaiMicroscope(metaclass=Singleton):
 
     def setStageSpeed(self, value: float) -> None:
         """Set Stage speed, not available on Tecnai."""
-        print('StageSpeed can not be set on Tecnai')
+        logger.info('StageSpeed can not be set on Tecnai')
 
     def stopStage(self) -> None:
         """Stop Stage, not available on Tecnai."""
-        print('stopStage: not available on Tecnai.')
+        logger.info('stopStage: not available on Tecnai.')
 
     def setRotationSpeed(self, value: float) -> None:
         """Set rotationspeed of the alpha rotation."""
@@ -402,7 +390,7 @@ class TecnaiMicroscope(metaclass=Singleton):
     ###Projection
     def getCurrentDensity(self) -> float:
         """Get the current density, not available on Tecnai."""
-        print('getCurrentDensity: not available on the Tecnai.')
+        logger.info('getCurrentDensity: not available on the Tecnai.')
         return 0
 
     def getScreenCurrent(self) -> float:
@@ -669,11 +657,11 @@ class TecnaiMicroscope(metaclass=Singleton):
     def release_connection() -> None:
         """release the COM-connection."""
         comtypes.CoUninitialize()
-        print('Connection to microscope released')
+        logger.info('Connection to microscope released')
 
     def getApertureSize(self, aperture: str) -> None:
         """not available on Tecnai."""
-        print('getApertureSize, not available on Tecnai.')
+        logger.info('getApertureSize, not available on Tecnai.')
 
  
 if __name__ == '__main__':

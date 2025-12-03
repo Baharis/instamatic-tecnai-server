@@ -14,7 +14,7 @@ except ImportError:
     np = False
 
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('cam')
 
 
 class SimuCamera(metaclass=Singleton):

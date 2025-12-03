@@ -1,3 +1,4 @@
+import logging
 import random
 import time
 from typing import Optional, Tuple, Union
@@ -5,6 +6,9 @@ from typing import Optional, Tuple, Union
 from instamaticServer.utils.config import config
 from instamaticServer.utils.exceptions import TEMValueError
 from instamaticServer.utils.types import StagePositionTuple, float_deg, int_nm
+
+
+logger = logging.getLogger('tem')
 
 
 NTRLMAPPING = {
@@ -153,6 +157,8 @@ class SimuMicroscope:
                 't0': 0.0,
             }
 
+        logger.info('Microscope simulate initialized')
+
         ##self.goniotool_available = config.settings.use_goniotool
         self.goniotool_available = False
         ##auf Klasse GonioToolClient Obacht geben
@@ -161,8 +167,8 @@ class SimuMicroscope:
             try:
                 self.goniotool = GonioToolClient()
             except Exception as e:
-                print('GonioToolClient:', e)
-                print('Could not connect to GonioToolServer, goniotool unavailable!')
+                logger.warning('GonioToolClient:', e)
+                logger.warning('Could not connect to GonioToolServer, goniotool unavailable!')
                 self.goniotool_available = False
                 #config.settings.use_goniotool = False
 
@@ -447,12 +453,11 @@ class SimuMicroscope:
 
     def getStageSpeed(self) -> float:
         """Return Stagespeed, can not be read on Tecnai = constant(0.5)."""
-        print('StageSpeed can not be read on Tecnai')
+        logger.info('StageSpeed can not be read on Tecnai')
         return 0.5
 
     def isStageMoving(self) -> bool:
         self.getStagePosition()  # trigger update of self._is_moving
-        # print(res, self._is_moving)
         return self._is_moving
 
     def waitForStage(self, delay: float = 0.1):
@@ -590,7 +595,7 @@ class SimuMicroscope:
         self.DiffractionShift_y = y
 
     def release_connection(self):
-        print('Connection to microscope released')
+        logger.info('Connection to microscope released')
 
     def isBeamBlanked(self) -> bool:
         return self.beamblank

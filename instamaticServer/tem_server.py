@@ -2,6 +2,7 @@ import datetime
 import logging
 import queue
 import socket
+import sys
 import threading
 import time
 import traceback
@@ -22,7 +23,18 @@ TIMEOUT = 0.5
 
 logfile = 'tem_server_%s.log' % datetime.datetime.now().strftime('%Y-%m-%d')
 logging_fmt = '%(asctime)s %(name)-4s: %(levelname)-8s %(message)s'
-logging.basicConfig(level=logging.INFO, filename='tem_server.log', format=logging_fmt)
+logging.basicConfig(level=15, filename='tem_server.log', format=logging_fmt)
+stdout_handler = logging.StreamHandler(sys.stdout)
+stdout_handler.setFormatter(logging.Formatter(logging_fmt))
+logging.getLogger().addHandler(stdout_handler)
+logging.addLevelName(15, "EVAL")
+
+def log_eval(logger, status, func_name, args, kwargs, ret):
+    if logger.isEnabledFor(15):
+        args_list = [repr(a) for a in args]
+        args_list += ['%s=%r' % (k, v) for k, v in kwargs.items()]
+        args_str = ', '.join(args_list)
+        logger.log(15, '%s | %s(%s): %s', status, func_name, args_str, ret)
 
 
 class DeviceServer(threading.Thread):
@@ -78,14 +90,13 @@ class DeviceServer(threading.Thread):
                 status = 500
 
             self.responses.put((status, ret))
-            self.logger.info("%s  |  %s  %s: %s", now, status, func_name, ret)
+            log_eval(self.logger, status, func_name, args, kwargs, ret)
 
-        self.logger.info('Terminating %s %s server thread', self.device_kind, self._name)
+        self.logger.info('Terminating %s %s server thread', self.device_kind, self.device.name)
 
     def evaluate(self, func_name: str, args: list, kwargs: dict) -> Any:
-        """Evaluate the function `func_name` on `self.device` and call it with
-        `args` and `kwargs`."""
-        self.logger.debug('eval %s %s %s', func_name, args, kwargs)
+        """Eval function `func_name` on `self.device` with `args` & `kwargs`."""
+        self.logger.debug('evaluate(func_name=%s, args=%s, kwargs=%s)', func_name, args, kwargs)
         f = getattr(self.device, func_name)
         return f(*args, **kwargs) if callable(f) else f
 
@@ -127,7 +138,7 @@ class CamServer(DeviceServer):
 
     def __init__(self, name=None) -> None:
         super(CamServer, self).__init__(name=name)
-        self.logger.setLevel(logging.WARNING)
+        self.logger.setLevel(logging.INFO)
 
 
 def handle(conn: socket.socket, server_type: Type[DeviceServer]) -> None:

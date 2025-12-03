@@ -1,5 +1,3 @@
-import atexit
-import json
 import pickle
 import socket
 import threading

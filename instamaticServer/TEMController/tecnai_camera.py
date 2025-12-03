@@ -14,7 +14,7 @@ except ImportError:
     np = False
 
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('cam')
 
 
 class TecnaiCamera(metaclass=Singleton):
@@ -37,7 +37,7 @@ class TecnaiCamera(metaclass=Singleton):
         self.name = name
         self.load_defaults()
         self.acq, self.cam = self.establish_connection()
-        logger.info(f'Camera Tecnai initialized')
+        logger.info(f'Camera Tecnai connection established')
         atexit.register(self.release_connection)
 
     def __enter__(self):
