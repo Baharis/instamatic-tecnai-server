@@ -21,11 +21,18 @@ _conf = config()
 BUFSIZE = 1024
 TIMEOUT = 0.5
 
+
+class MicrosecondFormatter(logging.Formatter):
+    def formatTime(self, record, datefmt=None):
+        t = datetime.datetime.fromtimestamp(record.created)
+        return t.strftime(datefmt) if datefmt else t.strftime("%H:%M:%S.%f")
+
+
 logfile = 'tem_server_%s.log' % datetime.datetime.now().strftime('%Y-%m-%d')
 logging_fmt = '%(asctime)s %(name)-4s: %(levelname)-8s %(message)s'
 logging.basicConfig(level=15, filename='tem_server.log', format=logging_fmt)
 stdout_handler = logging.StreamHandler(sys.stdout)
-stdout_handler.setFormatter(logging.Formatter(logging_fmt))
+stdout_handler.setFormatter(MicrosecondFormatter(logging_fmt))
 logging.getLogger().addHandler(stdout_handler)
 logging.addLevelName(15, "EVAL")
 
@@ -68,7 +75,6 @@ class DeviceServer(threading.Thread):
         self.logger.info('Initialized %s %s server thread', self.device_kind, self.device.name)
 
         while True:
-            now = datetime.datetime.now().strftime('%H:%M:%S.%f')
             try:
                 cmd = self.requests.get(timeout=TIMEOUT)
             except queue.Empty:

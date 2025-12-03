@@ -1,3 +1,4 @@
+import atexit
 import pickle
 import socket
 import threading
@@ -59,6 +60,7 @@ class TestServer(unittest.TestCase):
         cls.tem_listener = threading.Thread(target=listen, args=(TemServer,), name='tem_listener')
         cls.tem_listener.start()
         cls.threads = [cls.tem_server, cls.tem_listener]
+        atexit.register(cls.tearDownClass)
 
         t0 = time.perf_counter()
         while getattr(cls.tem_server, 'device', None) is None:
@@ -82,23 +84,38 @@ class TestServer(unittest.TestCase):
         cls.socket_tem = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         cls.socket_tem.connect((tem_host, tem_port))
         cls.socket_tem.settimeout(TIMEOUT)
-        # atexit.register(cls.socket_tem.close)
 
         cam_host = _conf.default_settings['cam_server_host']
         cam_port = _conf.default_settings['cam_server_port']
         cls.socket_cam = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         cls.socket_cam.connect((cam_host, cam_port))
         cls.socket_cam.settimeout(TIMEOUT)
-        # atexit.register(cls.socket_cam.close)
 
     @classmethod
     def tearDownClass(cls):
+        print('TEARDOWN???')
         stop_program_event.set()
-        for thread in cls.threads:
+        while cls.threads:
+            thread = cls.threads.pop(0)
             thread.join(timeout=5)
             if thread.is_alive():
                 print('Thread %s did not exit' % thread.name)
-        cls.socket_tem.close()
+
+        if hasattr(cls, 'socket_tem') and cls.socket_tem:
+            try:
+                cls.socket_tem.close()
+            except Exception as e:
+                print("Error closing socket_tem:", e)
+            finally:
+                cls.socket_tem = None
+
+        if hasattr(cls, 'socket_cam') and cls.socket_cam:
+            try:
+                cls.socket_cam.close()
+            except Exception as e:
+                print("Error closing socket_cam:", e)
+            finally:
+                cls.socket_cam = None
 
     @staticmethod
     def socket_send(s, func, args = (), kwargs = None):
