@@ -1,5 +1,5 @@
-microscope: simulate_tem
-camera: simulate_cam
+microscope: titan
+camera: ultrascan
 calibration: simulate
 
 # Global toggle to force simulated camera/microscope interface
@@ -11,16 +11,16 @@ flatfield:
 
 # Run the TEM connection in a different process (recommended)
 use_tem_server: True
-tem_server_host: 'localhost'
+tem_server_host: '192.168.0.1'
 tem_server_port: 8088
 tem_require_admin: False
 tem_communication_protocol: pickle  # pickle, json, msgpack, yaml
 
 # Run the Camera connection in a different process
-use_cam_server: False
-cam_server_host: 'localhost'
+use_cam_server: True
+cam_server_host: '192.168.0.1'
 cam_server_port: 8087
-cam_use_shared_memory: true
+cam_use_shared_memory: False
 
 # Submit collected data to an indexing server (CRED only)
 use_indexing_server_exe: False

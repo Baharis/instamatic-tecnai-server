@@ -13,7 +13,8 @@ def get_camera_class(interface: str):
     if interface == 'simulate':
         from .simu_camera import SimuCamera as CamCls
     elif interface == 'tecnai':
-        from .tecnai_microscope import TecnaiMicroscope as CamCls
+        from .tecnai_camera import TecnaiCamera as CamCls
+        # from .tecnai_microscope import TecnaiMicroscope as CamCls
     else:
         raise ValueError("No such microscope interface: %s" % interface)
 

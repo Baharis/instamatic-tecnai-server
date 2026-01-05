@@ -30,6 +30,10 @@ class TecnaiMicroscope(metaclass=Singleton):
         logger.info('FEI Scripting initializing...')
         ## TEM interfaces the GUN, stage etc. + enum constants
         self._tem = comtypes.client.CreateObject('TEMScripting.Instrument', comtypes.CLSCTX_ALL)
+        # TEMPORARY TEST LINE
+        # acq = self._tem.Acquisition
+        # print(dir(acq))
+        # END OF TEST
         self._tem_constant = comtypes.client.Constants(self._tem)
 
         self._t = 0

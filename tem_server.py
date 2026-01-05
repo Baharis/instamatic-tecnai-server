@@ -1,3 +1,8 @@
+# BOILERPLATE TO MAKE THINGS WORK WITH THE VENV ISSUE
+import sys
+sys.path.insert(0, r'Q:\DanielT\instamatic-tecnai-server\venv\Lib\site-packages')
+# BOILERPLATE END
+
 import datetime
 import logging
 import queue

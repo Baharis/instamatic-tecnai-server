@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import atexit
 import logging
 from typing import Tuple, Any, Optional, List
@@ -37,7 +35,7 @@ class TecnaiCamera(metaclass=Singleton):
         self.name = name
         self.load_defaults()
         self.acq, self.cam = self.establish_connection()
-        logger.info(f'Camera Tecnai connection established')
+        logger.info('Camera Tecnai connection established')
         atexit.register(self.release_connection)
 
     def __enter__(self):
@@ -87,7 +85,13 @@ class TecnaiCamera(metaclass=Singleton):
 
     def establish_connection(self) -> Tuple[Any, Any]:
         """Establish connection to the camera."""
-        acq = TecnaiMicroscope()._tem.Acquisition()
+        # test code to see if multi-threading is an issue
+        # import comtypes
+        # comtypes.CoInitialize()
+        # tem2 = comtypes.client.CreateObject('TEMScripting.Instrument.1')
+        # acq = tem2.Acquisition
+
+        # acq = TecnaiMicroscope()._tem.Acquisition # old code
         acq.RemoveAllAcqDevices()
         cam = acq.Cameras[0]
         cam.AcqParams.ImageCorrection = 1  # bias and gain corr (0=off, 1=on)
