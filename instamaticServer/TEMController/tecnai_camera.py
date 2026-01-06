@@ -37,7 +37,7 @@ class TecnaiCamera(metaclass=Singleton):
         self._tem = comtypes.client.CreateObject('TEMScripting.Instrument', comtypes.CLSCTX_ALL)
         self.name = name
         self.load_defaults()
-        self.acq, self.cam = self.establish_connection()
+        self._acq, self._cam = self.establish_connection()
         logger.info('Camera Tecnai connection established')
         atexit.register(self.release_connection)
 
@@ -64,9 +64,9 @@ class TecnaiCamera(metaclass=Singleton):
 
     def get_image(self, exposure: Optional[float] = None, binning: Optional[int] = None):
         """Image acquisition interface."""
-        self.cam.AcqParams.ExposureTime = exposure or self.default_exposure
-        self.cam.AcqParams.Binning = binning or self.default_binsize
-        img = self.acq.AcquireImages()[0]
+        self._cam.AcqParams.ExposureTime = exposure or self.default_exposure
+        self._cam.AcqParams.Binning = binning or self.default_binsize
+        img = self._acq.AcquireImages()[0]
         sa = img.AsSafeArray
         if np:
             return np.stack(sa).T
@@ -92,7 +92,7 @@ class TecnaiCamera(metaclass=Singleton):
         acq = self._tem.Acquisition
         acq.RemoveAllAcqDevices()
         cam = acq.Cameras[0]
-        cam.AcqParams.ImageCorrection = 0  # bias and gain corr (0=off, 1=on)
+        cam.AcqParams.ImageCorrection = 1  # bias and gain corr (0=off, 1=on)
         cam.AcqParams.ImageSize = 0  # sub area centered (0=full, 1=half, 2=quarter)
         acq.AddAcqDeviceByName(cam.Info.Name)
         return acq, cam
