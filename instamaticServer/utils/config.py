@@ -49,7 +49,7 @@ class config:
 
         return interface, wavelength, micr_ranges
 
-    def load_camera_config(self) -> NS:
+    def load_camera_config(self) -> SimpleNamespace:
         directory = Path(__file__).resolve().parent
         file = directory / (str(self.default_settings['camera']) + '.yaml')
         with open(str(file), 'r') as stream:
