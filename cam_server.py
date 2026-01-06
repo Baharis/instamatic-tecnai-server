@@ -4,7 +4,6 @@ sys.path.insert(0, r'Q:\DanielT\instamatic-tecnai-server\venv\Lib\site-packages'
 # BOILERPLATE END
 
 import argparse
-import datetime
 import logging
 import queue
 import sys
@@ -12,27 +11,11 @@ import threading
 import time
 
 from instamaticServer.TEMController.camera import get_camera
-from tem_server import DeviceServer, _conf, listen
+from tem_server import DeviceServer, _conf, listen, setup_logging
 
 
-stop_program_event = threading.Event()
 BUFSIZE = 1024
 TIMEOUT = 0.5
-
-
-class MicrosecondFormatter(logging.Formatter):
-    def formatTime(self, record, datefmt=None):
-        t = datetime.datetime.fromtimestamp(record.created)
-        return t.strftime(datefmt) if datefmt else t.strftime("%H:%M:%S.%f")
-
-
-logfile = 'cam_server_%s.log' % datetime.datetime.now().strftime('%Y-%m-%d')
-logging_fmt = '%(asctime)s %(name)-4s: %(levelname)-8s %(message)s'
-logging.basicConfig(level=15, filename=logfile, format=logging_fmt)
-stdout_handler = logging.StreamHandler(sys.stdout)
-stdout_handler.setFormatter(MicrosecondFormatter(logging_fmt))
-logging.getLogger().addHandler(stdout_handler)
-logging.addLevelName(15, "EVAL")
 
 
 class CamServer(DeviceServer):
@@ -43,6 +26,7 @@ class CamServer(DeviceServer):
     device_getter = staticmethod(get_camera)
     requests = queue.Queue(maxsize=1)
     responses = queue.Queue(maxsize=1)
+    stop_event = threading.Event()
     host = _conf.default_settings['cam_server_host']
     port = _conf.default_settings['cam_server_port']
 
@@ -81,7 +65,8 @@ def main() -> None:
     parser.set_defaults(camera=None)
     options = parser.parse_args()
 
-    logging.info('Titan camera server starting')
+    logger = setup_logging(device_abbr='cam')
+    logger.info('Titan camera server starting')
 
     cam_server = CamServer(name=options.camera)
     cam_server.start()
@@ -89,17 +74,15 @@ def main() -> None:
     cam_listener = threading.Thread(target=listen, args=(CamServer,), name='cam_listener')
     cam_listener.start()
 
-    threads = [cam_server, cam_listener]
-
     try:
-        while not stop_program_event.is_set(): time.sleep(TIMEOUT)
+        while not CamServer.stop_event.is_set(): time.sleep(TIMEOUT)
     except KeyboardInterrupt:
-        logging.info("Received KeyboardInterrupt, shutting down...")
+        logger.info("Received KeyboardInterrupt, shutting down...")
     finally:
-        stop_program_event.set()
-        for thread in threads:
-            thread.join()
-        logging.info('Titan camera server terminating')
+        CamServer.stop_event.set()
+        cam_server.join()
+        cam_listener.join()
+        logger.info('Titan camera server terminating')
         logging.shutdown()
 
 

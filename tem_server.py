@@ -21,26 +21,12 @@ from instamaticServer.serializer import dumper, loader
 from instamaticServer.utils.config import config
 
 
-stop_program_event = threading.Event()
+logging.addLevelName(15, "EVAL")
 
 _conf = config()
 BUFSIZE = 1024
 TIMEOUT = 0.5
 
-
-class MicrosecondFormatter(logging.Formatter):
-    def formatTime(self, record, datefmt=None):
-        t = datetime.datetime.fromtimestamp(record.created)
-        return t.strftime(datefmt) if datefmt else t.strftime("%H:%M:%S.%f")
-
-
-logfile = 'tem_server_%s.log' % datetime.datetime.now().strftime('%Y-%m-%d')
-logging_fmt = '%(asctime)s %(name)-4s: %(levelname)-8s %(message)s'
-logging.basicConfig(level=15, filename=logfile, format=logging_fmt)
-stdout_handler = logging.StreamHandler(sys.stdout)
-stdout_handler.setFormatter(MicrosecondFormatter(logging_fmt))
-logging.getLogger().addHandler(stdout_handler)
-logging.addLevelName(15, "EVAL")
 
 def log_eval(logger, status, func_name, args, kwargs, ret):
     if logger.isEnabledFor(15):
@@ -64,13 +50,14 @@ class DeviceServer(threading.Thread):
     device_getter = None  # type: Callable
     requests = None       # type: queue.Queue   
     responses = None      # type: queue.Queue
+    stop_event = None     # type: threading.Event
     host = 'localhost'    # type: str
     port = None           # type: int
 
     def __init__(self, name = None) -> None:
         super().__init__(name=self.device_kind + '_server')
         self.interface_name = name
-        self.logger = logging.getLogger(self.device_abbr + 'S')  # temS/camS server
+        self.logger = logging.getLogger(self.device_abbr)  # temS/camS server
         self.device = None
         self.verbose = False
 
@@ -84,7 +71,7 @@ class DeviceServer(threading.Thread):
             try:
                 cmd = self.requests.get(timeout=TIMEOUT)
             except queue.Empty:
-                if stop_program_event.is_set():
+                if self.stop_event.is_set():
                     break
                 continue
 
@@ -133,6 +120,7 @@ class TemServer(DeviceServer):
     device_getter = staticmethod(get_microscope)
     requests = queue.Queue(maxsize=1)
     responses = queue.Queue(maxsize=1)
+    stop_event = threading.Event()
     host = _conf.default_settings['tem_server_host']
     port = _conf.default_settings['tem_server_port']
     
@@ -143,7 +131,7 @@ def handle(conn: socket.socket, server_type: Type[DeviceServer]) -> None:
     with conn:
         conn.settimeout(TIMEOUT)
         while True:
-            if stop_program_event.is_set():
+            if server_type.stop_event.is_set():
                 break
 
             try:
@@ -168,14 +156,14 @@ def handle(conn: socket.socket, server_type: Type[DeviceServer]) -> None:
 def listen(server_type: Type[DeviceServer]) -> None:
     """Listen on a given server host/port and handle incoming instructions"""
 
-    logger = logging.getLogger(server_type.device_abbr + 'L')  # temL/camL listener
+    logger = logging.getLogger(server_type.device_abbr)  # tem/cam listener
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as device_client:
         device_client.bind((server_type.host, server_type.port))
         device_client.settimeout(TIMEOUT)
         device_client.listen(1)
         logger.info('Server listening on %s:%s', server_type.host, server_type.port)
         while True:
-            if stop_program_event.is_set():
+            if server_type.stop_event.is_set():
                 break
             try:
                 connection, _ = device_client.accept()
@@ -185,6 +173,31 @@ def listen(server_type: Type[DeviceServer]) -> None:
             except Exception as e:
                 logger.exception('Exception when handling connection: %s', e)
         logger.info('Terminating %s listener thread', server_type.device_kind)
+
+
+class MicrosecondFormatter(logging.Formatter):
+    def formatTime(self, record, datefmt=None):
+        t = datetime.datetime.fromtimestamp(record.created)
+        return t.strftime(datefmt) if datefmt else t.strftime("%H:%M:%S.%f")
+
+
+def setup_logging(device_abbr='tem') -> logging.Logger:
+    logger = logging.getLogger(device_abbr)
+    logger.setLevel(15)
+
+    logfile = '%s_server_%s.log' % (device_abbr, datetime.datetime.now().strftime('%Y-%m-%d'))
+    fh = logging.FileHandler(logfile)
+    sh = logging.StreamHandler(sys.stdout)
+
+    fmt = MicrosecondFormatter('%(asctime)s %(name)-3s: %(levelname)-8s %(message)s')
+    fh.setFormatter(fmt)
+    sh.setFormatter(fmt)
+
+    logger.addHandler(fh)
+    logger.addHandler(sh)
+
+    logger.propagate = False
+    return logger
 
 
 def main() -> None:
@@ -217,7 +230,8 @@ def main() -> None:
     parser.set_defaults(microscope=None)
     options = parser.parse_args()
 
-    logging.info('Tecnai microscope server starting')
+    logger = setup_logging(device_abbr='tem')
+    logger.info('Tecnai microscope server starting')
 
     tem_server = TemServer(name=options.microscope)
     tem_server.start()
@@ -225,17 +239,15 @@ def main() -> None:
     tem_listener = threading.Thread(target=listen, args=(TemServer,), name='tem_listener')
     tem_listener.start()
 
-    threads = [tem_server, tem_listener]
-
     try:
-        while not stop_program_event.is_set(): time.sleep(TIMEOUT)
+        while not TemServer.stop_event.is_set(): time.sleep(TIMEOUT)
     except KeyboardInterrupt:
-        logging.info("Received KeyboardInterrupt, shutting down...")
+        logger.info("Received KeyboardInterrupt, shutting down...")
     finally:
-        stop_program_event.set()
-        for thread in threads:
-            thread.join()
-        logging.info('Tecnai microscope server terminating')
+        TemServer.stop_event.set()
+        tem_server.join()
+        tem_listener.join()
+        logger.info('Tecnai microscope server terminating')
         logging.shutdown()
 
 
