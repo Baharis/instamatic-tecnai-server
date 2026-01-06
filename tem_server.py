@@ -3,6 +3,7 @@ import sys
 sys.path.insert(0, r'Q:\DanielT\instamatic-tecnai-server\venv\Lib\site-packages')
 # BOILERPLATE END
 
+import argparse
 import datetime
 import logging
 import queue
@@ -14,7 +15,7 @@ import traceback
 
 from typing import Any, Type, Callable
 
-from instamaticServer.TEMController.camera import get_camera
+
 from instamaticServer.TEMController.microscope import get_microscope
 from instamaticServer.serializer import dumper, loader
 from instamaticServer.utils.config import config
@@ -35,7 +36,7 @@ class MicrosecondFormatter(logging.Formatter):
 
 logfile = 'tem_server_%s.log' % datetime.datetime.now().strftime('%Y-%m-%d')
 logging_fmt = '%(asctime)s %(name)-4s: %(levelname)-8s %(message)s'
-logging.basicConfig(level=15, filename='tem_server.log', format=logging_fmt)
+logging.basicConfig(level=15, filename=logfile, format=logging_fmt)
 stdout_handler = logging.StreamHandler(sys.stdout)
 stdout_handler.setFormatter(MicrosecondFormatter(logging_fmt))
 logging.getLogger().addHandler(stdout_handler)
@@ -136,22 +137,6 @@ class TemServer(DeviceServer):
     port = _conf.default_settings['tem_server_port']
     
 
-class CamServer(DeviceServer):
-    """FEI Tecnai/Titan Acquisition camera communication server."""
-
-    device_abbr = 'cam'
-    device_kind = 'camera'
-    device_getter = staticmethod(get_camera)
-    requests = queue.Queue(maxsize=1)
-    responses = queue.Queue(maxsize=1)
-    host = _conf.default_settings['cam_server_host']
-    port = _conf.default_settings['cam_server_port']
-
-    def __init__(self, name=None) -> None:
-        super(CamServer, self).__init__(name=name)
-        self.logger.setLevel(logging.INFO)
-
-
 def handle(conn: socket.socket, server_type: Type[DeviceServer]) -> None:
     """Handle incoming connection, put command on the Queue `q`, which is then
     handled by TEMServer."""
@@ -205,7 +190,7 @@ def listen(server_type: Type[DeviceServer]) -> None:
 def main() -> None:
     """
     Connects to the TEM and starts a server for microscope communication.
-    Opens a socket on port {HOST}:{PORT}.
+    Opens a socket on port {TemServer.host}:{TemServer.port}.
 
     This program initializes a connection to the TEM as defined in the config.
     The purpose of this program is to isolate the microscope connection in
@@ -225,19 +210,14 @@ def main() -> None:
 
     The response is returned as a serialized object.
     """
-
-    import argparse
     
     parser = argparse.ArgumentParser(description=main.__doc__)
     parser.add_argument('-t', '--microscope', action='store',
                         help='Override microscope to use.')
-    parser.add_argument('-c', '--camera', action='store_true',
-                        help='If selected, start separate threads for a camera')
-
     parser.set_defaults(microscope=None)
     options = parser.parse_args()
 
-    logging.info('Tecnai server starting')
+    logging.info('Tecnai microscope server starting')
 
     tem_server = TemServer(name=options.microscope)
     tem_server.start()
@@ -247,23 +227,6 @@ def main() -> None:
 
     threads = [tem_server, tem_listener]
 
-    if options.camera:
-        logging.info('Waiting for the TEM singleton to initialize')
-        for _ in range(100):
-            if getattr(tem_server, 'device') is not None:  # wait until TEM initialized
-                break
-            time.sleep(0.05)
-        else:  # necessary check, Error extremely unlikely, TEM typically starts in ms
-            raise RuntimeError('Could not start TEM device on server in 5 seconds')
-
-        cam_server = CamServer(name=options.microscope)
-        cam_server.start()
-
-        cam_listener = threading.Thread(target=listen, args=(CamServer,), name='cam_listener')
-        cam_listener.start()
-
-        threads.extend([cam_server, cam_listener])
-
     try:
         while not stop_program_event.is_set(): time.sleep(TIMEOUT)
     except KeyboardInterrupt:
@@ -272,7 +235,7 @@ def main() -> None:
         stop_program_event.set()
         for thread in threads:
             thread.join()
-        logging.info('Tecnai server terminating')
+        logging.info('Tecnai microscope server terminating')
         logging.shutdown()
 
 

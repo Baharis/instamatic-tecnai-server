@@ -1,7 +1,7 @@
 import atexit
+import comtypes.client
 import logging
 import time
-import comtypes.client
 from math import pi
 from typing import Optional
 
@@ -21,19 +21,10 @@ class TecnaiMicroscope(metaclass=Singleton):
     """Python bindings to the Tecnai-G2 microscope using the COM scripting interface."""
 
     def __init__(self, name: str=None) -> None:
-
-        try:
-            comtypes.CoInitialize()
-        except:
-            raise
-
+        comtypes.CoInitialize()
         logger.info('FEI Scripting initializing...')
         ## TEM interfaces the GUN, stage etc. + enum constants
         self._tem = comtypes.client.CreateObject('TEMScripting.Instrument', comtypes.CLSCTX_ALL)
-        # TEMPORARY TEST LINE
-        # acq = self._tem.Acquisition
-        # print(dir(acq))
-        # END OF TEST
         self._tem_constant = comtypes.client.Constants(self._tem)
 
         self._t = 0

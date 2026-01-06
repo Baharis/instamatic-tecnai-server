@@ -1,8 +1,8 @@
 import atexit
+import comtypes.client
 import logging
 from typing import Tuple, Any, Optional, List
 
-from instamaticServer.TEMController.tecnai_microscope import TecnaiMicroscope
 from instamaticServer.utils.config import config
 from instamaticServer.utils.singleton import Singleton
 
@@ -32,6 +32,9 @@ class TecnaiCamera(metaclass=Singleton):
 
     def __init__(self, name='tecnai'):
         """Initialize camera module."""
+        comtypes.CoInitialize()
+        logger.info('FEI Scripting initializing...')
+        self._tem = comtypes.client.CreateObject('TEMScripting.Instrument', comtypes.CLSCTX_ALL)
         self.name = name
         self.load_defaults()
         self.acq, self.cam = self.establish_connection()
@@ -85,13 +88,7 @@ class TecnaiCamera(metaclass=Singleton):
 
     def establish_connection(self) -> Tuple[Any, Any]:
         """Establish connection to the camera."""
-        # test code to see if multi-threading is an issue
-        # import comtypes
-        # comtypes.CoInitialize()
-        # tem2 = comtypes.client.CreateObject('TEMScripting.Instrument.1')
-        # acq = tem2.Acquisition
-
-        # acq = TecnaiMicroscope()._tem.Acquisition # old code
+        acq = self._tem.Acquisition
         acq.RemoveAllAcqDevices()
         cam = acq.Cameras[0]
         cam.AcqParams.ImageCorrection = 1  # bias and gain corr (0=off, 1=on)
