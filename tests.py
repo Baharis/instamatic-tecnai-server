@@ -11,8 +11,8 @@ import time
 import unittest
 
 from instamaticServer.TEMController.simu_microscope import SimuMicroscope
-from instamaticServer.utils.config import NS, config, dict_to_namespace
-from tem_server import stop_program_event
+from instamaticServer.utils.config import SimpleNamespace, config, dict_to_namespace
+from tem_server import stop_program_event  # TODO: this is outdated
 
 _conf_dict = {'a': 1, 'b': {'c': 3, 'd': 4}}
 _conf = config()
@@ -23,19 +23,19 @@ TIMEOUT = 30
 
 class TestConfig(unittest.TestCase):
     def test_namespace(self):
-        ns = NS(**_conf_dict)
+        ns = SimpleNamespace(**_conf_dict)
         self.assertEqual(ns.a, 1)
         self.assertEqual(ns.b, {'c': 3, 'd': 4})
 
     def test_dict_to_namespace(self):
         ns = dict_to_namespace(_conf_dict)
         self.assertEqual(ns.a, 1)
-        self.assertEqual(ns.b, NS(**{'c': 3, 'd': 4}))
+        self.assertEqual(ns.b, SimpleNamespace(**{'c': 3, 'd': 4}))
 
     def test_config(self):
         global _conf
         self.assertIn(_conf.micr_interface, {'tecnai', 'simulate'})
-        self.assertIsInstance(_conf.camera, NS)
+        self.assertIsInstance(_conf.camera, SimpleNamespace)
 
 
 class TestSerializers(unittest.TestCase):

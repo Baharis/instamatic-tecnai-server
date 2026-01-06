@@ -8,15 +8,10 @@ import yaml
 _settings_file = 'settings.yaml'
 
 
-class NS(SimpleNamespace):
-    def get(self, key, default=None):
-        return getattr(self, key, default)
-
-
-def dict_to_namespace(d: Dict) -> NS:
+def dict_to_namespace(d: Dict) -> SimpleNamespace:
     """Recursively converts a dictionary into a SimpleNamespace."""
     if isinstance(d, dict):
-        return NS(**{k: dict_to_namespace(v) for k, v in d.items()})
+        return SimpleNamespace(**{k: dict_to_namespace(v) for k, v in d.items()})
     return d
 
 
@@ -32,7 +27,7 @@ class config:
         try:
             self.camera = self.load_camera_config()
         except FileNotFoundError:
-            self.camera = NS()
+            self.camera = SimpleNamespace()
 
     def settings(self) -> dict:
         """load the settings.yaml file."""
