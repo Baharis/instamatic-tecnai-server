@@ -62,10 +62,10 @@ class TecnaiCamera(metaclass=Singleton):
         for key, val in _conf.camera.__dict__.items():
             setattr(self, key, val)
 
-    def get_image(self, exposure: Optional[float] = None, binning: Optional[int] = None):
+    def get_image(self, exposure: Optional[float] = None, binsize: Optional[int] = None):
         """Image acquisition interface."""
         self._cam.AcqParams.ExposureTime = exposure or self.default_exposure
-        self._cam.AcqParams.Binning = binning or self.default_binsize
+        self._cam.AcqParams.Binning = binsize or self.default_binsize
         img = self._acq.AcquireImages()[0]
         sa = img.AsSafeArray
         if np:
