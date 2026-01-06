@@ -74,8 +74,8 @@ class TecnaiCamera(metaclass=Singleton):
         # try [[sa.GetElement([r, c]) or similar if direct indexing does not work...
 
     def get_image_dimensions(self) -> Tuple[int, int]:
-        """Get the binned dimensions reported by the camera."""
-        dx, dy = self.cam.AcqParams.ImageSize[:2]
+        """Get the binned dimensions of the camera."""
+        dx, dy = self.dimensions
         return dx // self.default_binsize, dy // self.default_binsize
 
     def get_movie(
@@ -92,7 +92,7 @@ class TecnaiCamera(metaclass=Singleton):
         acq = self._tem.Acquisition
         acq.RemoveAllAcqDevices()
         cam = acq.Cameras[0]
-        cam.AcqParams.ImageCorrection = 1  # bias and gain corr (0=off, 1=on)
+        cam.AcqParams.ImageCorrection = 0  # bias and gain corr (0=off, 1=on)
         cam.AcqParams.ImageSize = 0  # sub area centered (0=full, 1=half, 2=quarter)
         acq.AddAcqDeviceByName(cam.Info.Name)
         return acq, cam
