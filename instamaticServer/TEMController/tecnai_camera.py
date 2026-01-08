@@ -1,8 +1,11 @@
 import atexit
+from functools import partial
+
 import comtypes.client
 import logging
-from typing import Tuple, Any, Optional, List
+from typing import Any, Generator, List, Optional, Tuple
 
+from instamaticServer.TEMController.movie_thread import RemoteMovie
 from instamaticServer.utils.config import config
 from instamaticServer.utils.singleton import Singleton
 
@@ -83,9 +86,10 @@ class TecnaiCamera(metaclass=Singleton):
             n_frames: int,
             exposure: Optional[float] = None,
             binsize: Optional[int] = None,
-    ):
-        """Unfortunately not designed to work with generators, as a server..."""
-        return [self.get_image(exposure, binsize) for _ in range(n_frames)]
+    ) -> Generator:
+        """Yield n_frames images each collected using subsequent get_image"""
+        get_image = partial(self.get_image, self)
+        yield from RemoteMovie(get_image, n_frames=n_frames, exposure=exposure, binsize=binsize)
 
     def establish_connection(self) -> Tuple[Any, Any]:
         """Establish connection to the camera."""

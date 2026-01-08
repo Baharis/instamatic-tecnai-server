@@ -5,6 +5,7 @@ sys.path.insert(0, r'Q:\DanielT\instamatic-tecnai-server\venv\Lib\site-packages'
 
 import argparse
 import datetime
+import inspect
 import logging
 import queue
 import socket
@@ -12,6 +13,7 @@ import sys
 import threading
 import time
 import traceback
+import uuid
 
 from typing import Any, Type, Callable
 
@@ -22,8 +24,8 @@ from instamaticServer.utils.config import config
 
 
 logging.addLevelName(15, "EVAL")
-
 _conf = config()
+_generators = {}
 BUFSIZE = 1024
 TIMEOUT = 0.5
 
@@ -82,6 +84,10 @@ class DeviceServer(threading.Thread):
             try:
                 ret = self.evaluate(func_name, args, kwargs)
                 status = 200
+                if inspect.isgenerator(ret):
+                    gen_id = uuid.uuid4().hex
+                    _generators[gen_id] = ret
+                    ret = {'__generator__': gen_id}
             except Exception as e:
                 traceback.print_exc()
                 self.logger.exception(e)
@@ -96,6 +102,19 @@ class DeviceServer(threading.Thread):
     def evaluate(self, func_name: str, args: list, kwargs: dict) -> Any:
         """Eval function `func_name` on `self.device` with `args` & `kwargs`."""
         self.logger.debug('evaluate(func_name=%s, args=%s, kwargs=%s)', func_name, args, kwargs)
+
+        if func_name == '__gen_next__':
+            gen = _generators[kwargs['id']]
+            try:
+                return next(gen)
+            except StopIteration:
+                del _generators[kwargs['id']]
+                return
+
+        if func_name == "__gen_close__":
+            _generators.pop(kwargs['id'], None)
+            return
+
         f = getattr(self.device, func_name)
         return f(*args, **kwargs) if callable(f) else f
 
