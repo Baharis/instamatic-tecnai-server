@@ -26,16 +26,20 @@ class MovieThread(threading.Thread):
 
 
 class RemoteMovie:
-    """A wrapper that makes the movie thread into a generator"""
+    """A lazy single-threaded image iterator, can't pass acq to other thread."""
     def __init__(self, get_image: Callable, **kwargs) -> None:
-        self.thread = MovieThread(get_image, **kwargs)
+        self._get_image = get_image
+        self._kwargs: Dict[str, Any] = dict(kwargs)
+        self._n_frames = self._kwargs.pop('n_frames')
+        self._i = 0
+        self._started = False
 
-    def next(self):
-        if not self.thread.is_alive():
-            self.thread.start()
-        image = self.thread.queue.get()
-        if image is None:
-            if self.thread.exception:
-                raise self.thread.exception
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        if self._i >= self._n_frames:
             raise StopIteration
-        return image
+        self._started = True
+        self._i += 1
+        return self._get_image(**self._kwargs)
