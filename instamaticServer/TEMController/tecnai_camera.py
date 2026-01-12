@@ -5,7 +5,7 @@ import comtypes.client
 import logging
 from typing import Any, Generator, List, Optional, Tuple
 
-from instamaticServer.TEMController.movie_thread import RemoteMovie
+from instamaticServer.TEMController.remote_movie import RemoteMovie
 from instamaticServer.utils.config import config
 from instamaticServer.utils.singleton import Singleton
 

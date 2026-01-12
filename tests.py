@@ -1,6 +1,6 @@
 # BOILERPLATE TO MAKE THINGS WORK WITH THE VENV ISSUE
-import sys
-sys.path.insert(0, r'Q:\DanielT\instamatic-tecnai-server\venv\Lib\site-packages')
+# import sys
+# sys.path.insert(0, r'Q:\DanielT\instamatic-tecnai-server\venv\Lib\site-packages')
 # BOILERPLATE END
 
 import atexit
@@ -12,7 +12,6 @@ import unittest
 
 from instamaticServer.TEMController.simu_microscope import SimuMicroscope
 from instamaticServer.utils.config import SimpleNamespace, config, dict_to_namespace
-from tem_server import stop_program_event  # TODO: this is outdated
 
 _conf_dict = {'a': 1, 'b': {'c': 3, 'd': 4}}
 _conf = config()
