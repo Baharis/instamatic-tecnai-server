@@ -1,0 +1,21 @@
+calib_beamshift:
+  gridsize: 5
+  stepsize: 500
+calib_directbeam:
+  BeamShift:
+    gridsize: 5
+    stepsize: 75
+  DiffShift:
+    gridsize: 5
+    stepsize: 300
+camera_rotation_vs_stage_xy: -2.24
+default_binsize: 4
+default_exposure: 0.1
+dimensions: [2048, 2048]
+dynamic_range: 65535
+interface: tecnai
+physical_pixelsize: 0.014
+possible_binsizes: [1, 2, 4]
+stretch_amplitude: 0.0
+stretch_azimuth: 0.0
+dead_time: 0.5

@@ -15,8 +15,7 @@ def dict_to_namespace(d: Dict) -> SimpleNamespace:
     return d
 
 
-class config:
-
+class Config:
     def __init__(self, name:str=None):
         self.default_settings = self.settings()
 
@@ -56,8 +55,11 @@ class config:
             return dict_to_namespace(yaml.safe_load(stream))
 
 
+config = Config()
+
+
 if __name__ == '__main__':
-    data = config()
+    data = Config()
     print(data.default_settings['microscope'])
     print(data.micr_ranges['Mh'])
     

@@ -1,4 +1,4 @@
-# BOILERPLATE TO MAKE THINGS WORK WITH THE VENV ISSUE
+# IF YOUR VENV DOES NOT WORK CORRECTLY, A BOILERPLATE LIKE THIS MAY BE REQUIRED
 # import sys
 # sys.path.insert(0, r'Q:\DanielT\instamatic-tecnai-server\venv\Lib\site-packages')
 # BOILERPLATE END
@@ -24,7 +24,6 @@ from instamaticServer.utils.config import config
 
 
 logging.addLevelName(15, "EVAL")
-_conf = config()
 _generators = {}
 BUFSIZE = 1024
 TIMEOUT = 0.5
@@ -140,8 +139,8 @@ class TemServer(DeviceServer):
     requests = queue.Queue(maxsize=1)
     responses = queue.Queue(maxsize=1)
     stop_event = threading.Event()
-    host = _conf.default_settings['tem_server_host']
-    port = _conf.default_settings['tem_server_port']
+    host = config.default_settings['tem_server_host']
+    port = config.default_settings['tem_server_port']
     
 
 def handle(conn: socket.socket, server_type: Type[DeviceServer]) -> None:

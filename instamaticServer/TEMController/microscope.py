@@ -1,7 +1,6 @@
 from instamaticServer.utils.config import config
 
 
-_conf = config()
 _tem_interfaces = ('simulate', 'tecnai')
 
 __all__ = ['get_microscope', 'get_microscope_class']
@@ -26,8 +25,8 @@ def get_microscope(name: str = None):
     if name in _tem_interfaces:
         interface = name
     else:
-        interface = _conf.micr_interface
-        name = _conf.default_settings['microscope']
+        interface = config.micr_interface
+        name = config.default_settings['microscope']
 
     cls = get_microscope_class(interface=interface)
     tem = cls(name=name)

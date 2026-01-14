@@ -1,7 +1,6 @@
 from instamaticServer.utils.config import config
 
 
-_conf = config()
 _cam_interfaces = ('simulate', 'tecnai')
 
 __all__ = ['get_camera', 'get_camera_class']
@@ -26,8 +25,8 @@ def get_camera(name: str = None):
     if name in _cam_interfaces:
         interface = name
     else:
-        interface = _conf.camera.interface
-        name = _conf.default_settings['microscope']
+        interface = config.camera.interface
+        name = config.default_settings['microscope']
 
     cls = get_camera_class(interface=interface)
     tem = cls(name=name)

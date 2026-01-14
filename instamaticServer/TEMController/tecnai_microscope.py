@@ -6,7 +6,7 @@ from math import pi
 from typing import Optional
 
 from instamaticServer.TEMController.tecnai_stage_thread import TecnaiStageThread
-from instamaticServer.utils.config import config
+from instamaticServer.utils.config import Config
 from instamaticServer.utils.exceptions import FEIValueError, TEMCommunicationError
 from instamaticServer.utils.singleton import Singleton
 from instamaticServer.utils.types import StagePositionTuple, float_deg, int_nm
@@ -18,7 +18,7 @@ _FUNCTION_MODES = {1: 'lowmag', 2: 'mag1', 3: 'samag', 4: 'mag2', 5: 'LAD', 6: '
 
 
 class TecnaiMicroscope(metaclass=Singleton):
-    """Python bindings to the Tecnai-G2 microscope using the COM scripting interface."""
+    """Python bindings to the FEI microscope using the COM scripting interface."""
 
     def __init__(self, name: str=None) -> None:
         comtypes.CoInitialize()
@@ -45,10 +45,10 @@ class TecnaiMicroscope(metaclass=Singleton):
 
         self.name = name
 
-        self._conf = config(self.name)
+        self.config = Config(self.name)
         self._mic_ranges = None
-        if self._conf.micr_interface == 'tecnai':
-            self._mic_ranges = self._conf.micr_ranges
+        if self.config.micr_interface == 'tecnai':
+            self._mic_ranges = self.config.micr_ranges
 
         self._rotation_speed = 1.0
         self._tecnaiStage = TecnaiStageThread() #Thread für a-Movement
@@ -169,7 +169,6 @@ class TecnaiMicroscope(metaclass=Singleton):
                 self._tecnaiStage.start()
 
         #self._tem.Stage.GoToWithSpeed(pos, axis, 0.01) => 1grad in 4-5sec.
-
 
     def setStageA(self, value: float=None, wait: bool=True) -> None:
         """Set the Stageposition alpha (A) in degrees."""

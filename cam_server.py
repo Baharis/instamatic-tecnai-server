@@ -1,4 +1,4 @@
-# BOILERPLATE TO MAKE THINGS WORK WITH THE VENV ISSUE
+# IF YOUR VENV DOES NOT WORK CORRECTLY, A BOILERPLATE LIKE THIS MAY BE REQUIRED
 # import sys
 # sys.path.insert(0, r'Q:\DanielT\instamatic-tecnai-server\venv\Lib\site-packages')
 # BOILERPLATE END
@@ -6,12 +6,12 @@
 import argparse
 import logging
 import queue
-import sys
 import threading
 import time
 
 from instamaticServer.TEMController.camera import get_camera
-from tem_server import DeviceServer, _conf, listen, setup_logging
+from instamaticServer.utils.config import config
+from tem_server import DeviceServer, listen, setup_logging
 
 
 BUFSIZE = 1024
@@ -27,8 +27,8 @@ class CamServer(DeviceServer):
     requests = queue.Queue(maxsize=1)
     responses = queue.Queue(maxsize=1)
     stop_event = threading.Event()
-    host = _conf.default_settings['cam_server_host']
-    port = _conf.default_settings['cam_server_port']
+    host = config.default_settings['cam_server_host']
+    port = config.default_settings['cam_server_port']
 
     def __init__(self, name=None) -> None:
         super(CamServer, self).__init__(name=name)

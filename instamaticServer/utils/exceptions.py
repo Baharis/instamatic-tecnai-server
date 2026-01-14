@@ -23,7 +23,7 @@ exception_list = {
     'TEMCommunicationError': TEMCommunicationError,
     'JEOLValueError': JEOLValueError,
     'FEIValueError': FEIValueError,
-    'TEMControllerError   ': TEMControllerError,
+    'TEMControllerError': TEMControllerError,
     'AttributeError': AttributeError,
     'AssertionError': AssertionError,
     'ConnectionError': ConnectionError,

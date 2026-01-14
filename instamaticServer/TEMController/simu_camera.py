@@ -55,8 +55,7 @@ class SimuCamera(metaclass=Singleton):
         return self.name
 
     def load_defaults(self) -> None:
-        _conf = config()
-        for key, val in _conf.camera.__dict__.items():
+        for key, val in config.camera.__dict__.items():
             setattr(self, key, val)
 
     def get_image(self, exposure: Optional[float] = None, binsize: int = 1):

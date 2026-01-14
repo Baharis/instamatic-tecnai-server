@@ -3,7 +3,7 @@ import random
 import time
 from typing import Optional, Tuple, Union
 
-from instamaticServer.utils.config import config
+from instamaticServer.utils.config import Config
 from instamaticServer.utils.exceptions import TEMValueError
 from instamaticServer.utils.types import StagePositionTuple, float_deg, int_nm
 
@@ -92,11 +92,11 @@ class SimuMicroscope:
         self.MAX = MAX
         self.MIN = MIN
 
-        self._conf = config(self.name)
+        self.config = Config(self.name)
 
         self._mic_ranges = None
-        if self._conf.micr_interface == 'simulate':
-            self._mic_ranges = self._conf.micr_ranges
+        if self.config.micr_interface == 'simulate':
+            self._mic_ranges = self.config.micr_ranges
 
         self._HT = 200000  # V
 
