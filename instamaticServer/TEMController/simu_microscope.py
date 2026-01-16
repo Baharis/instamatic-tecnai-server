@@ -1,10 +1,14 @@
+import logging
 import random
 import time
 from typing import Optional, Tuple, Union
 
-from .typing import StagePositionTuple, float_deg, int_nm
-from utils.exceptions import TEMValueError
-from utils.config import config
+from instamaticServer.utils.config import Config
+from instamaticServer.utils.exceptions import TEMValueError
+from instamaticServer.utils.types import StagePositionTuple, float_deg, int_nm
+
+
+logger = logging.getLogger('tem')
 
 
 NTRLMAPPING = {
@@ -58,11 +62,17 @@ class SimuMicroscope:
         self.BeamTilt_x = random.randint(MIN, MAX)
         self.BeamTilt_y = random.randint(MIN, MAX)
 
+        self.IlluminationTiltX = random.randint(MIN, MAX)
+        self.IlluminationTiltY = random.randint(MIN, MAX)
+
         self.ImageShift1_x = random.randint(MIN, MAX)
         self.ImageShift1_y = random.randint(MIN, MAX)
 
         self.ImageShift2_x = random.randint(MIN, MAX)
         self.ImageShift2_y = random.randint(MIN, MAX)
+
+        self.ImageBeamShift_x = random.randint(MIN, MAX)
+        self.ImageBeamShift_y = random.randint(MIN, MAX)
 
         # self.FunctionMode_value = random.randint(0, 2)
         self.FunctionMode_value = 0
@@ -82,11 +92,11 @@ class SimuMicroscope:
         self.MAX = MAX
         self.MIN = MIN
 
-        self._conf = config(self.name)
+        self.config = Config(self.name)
 
         self._mic_ranges = None
-        if self._conf.micr_interface == 'simulate':
-            self._mic_ranges = self._conf.micr_ranges
+        if self.config.micr_interface == 'simulate':
+            self._mic_ranges = self.config.micr_ranges
 
         self._HT = 200000  # V
 
@@ -140,12 +150,14 @@ class SimuMicroscope:
                 'current': current,
                 'is_moving': False,
                 'speed': speed,
-                'speed_setting': 12,
+                'speed_setting': 1,
                 'direction': +1,
                 'start': 0.0,
                 'end': 0.0,
                 't0': 0.0,
             }
+
+        logger.info('Microscope simulate initialized')
 
         ##self.goniotool_available = config.settings.use_goniotool
         self.goniotool_available = False
@@ -155,8 +167,8 @@ class SimuMicroscope:
             try:
                 self.goniotool = GonioToolClient()
             except Exception as e:
-                print('GonioToolClient:', e)
-                print('Could not connect to GonioToolServer, goniotool unavailable!')
+                logger.warning('GonioToolClient:', e)
+                logger.warning('Could not connect to GonioToolServer, goniotool unavailable!')
                 self.goniotool_available = False
                 #config.settings.use_goniotool = False
 
@@ -255,10 +267,23 @@ class SimuMicroscope:
         rand_val = (random.random() - 0.5) * 10000
         return self.CurrentDensity_value + rand_val
 
+    def getScreenCurrent(self):
+        rand_val = (random.random() - 0.5) * 10000
+        return self.CurrentDensity_value + rand_val
+
+    def isfocusscreenin(self) -> bool:
+        return False
+
     def getBrightness(self) -> int:
         return self.Brightness_value
 
     def setBrightness(self, value: int):
+        self.Brightness_value = value
+
+    def getBrightnessValue(self) -> int:
+        return self.Brightness_value
+
+    def setBrightnessValue(self, value: int):
         self.Brightness_value = value
 
     def getMagnification(self) -> int:
@@ -356,6 +381,14 @@ class SimuMicroscope:
         self.GunShift_x = x
         self.GunShift_y = y
 
+    def getBeamAlignShift(self) -> (float, float):
+        """get the Gun-Shift values."""
+        return self.getGunShift()
+
+    def setBeamAlignShift(self, x: float, y: float) -> None:
+        """set Gun-Shift values."""
+        self.setGunShift(x, y)
+
     def getGunTilt(self) -> Tuple[int, int]:
         return self.GunTilt_x, self.GunTilt_y
 
@@ -377,6 +410,15 @@ class SimuMicroscope:
         self.BeamTilt_x = x
         self.BeamTilt_y = y
 
+    def getDarkFieldTilt(self) -> (float, float):
+        """get the dark field tile value."""
+        return self.IlluminationTiltX, self.IlluminationTiltX
+
+    def setDarkFieldTilt(self, x: float, y: float) -> None:
+        """set the dark field tilt value."""
+        self.IlluminationTiltX = x
+        self.IlluminationTiltY = y
+
     def getImageShift1(self) -> Tuple[int, int]:
         return self.ImageShift1_x, self.ImageShift1_y
 
@@ -391,13 +433,31 @@ class SimuMicroscope:
         self.ImageShift2_x = x
         self.ImageShift2_y = y
 
+    def getImageBeamShift(self):
+        return self.ImageBeamShift_x, self.ImageBeamShift_y
+
+    def setImageBeamShift(self, x: float, y: float) -> None:
+        self.ImageBeamShift_x = x
+        self.ImageBeamShift_y = y
+
+    def getHolderType(self) -> int:
+        return 0
+
     def getStagePosition(self) -> StagePositionTuple:
         return (self.StagePosition_x, self.StagePosition_y, self.StagePosition_z,
                 self.StagePosition_a, self.StagePosition_b)
 
+    def isAThreadAlive(self) -> bool:
+        """Return goniotool status, always False."""
+        return False
+
+    def getStageSpeed(self) -> float:
+        """Return Stagespeed, can not be read on Tecnai = constant(0.5)."""
+        logger.info('StageSpeed can not be read on Tecnai')
+        return 0.5
+
     def isStageMoving(self) -> bool:
         self.getStagePosition()  # trigger update of self._is_moving
-        # print(res, self._is_moving)
         return self._is_moving
 
     def waitForStage(self, delay: float = 0.1):
@@ -468,7 +528,7 @@ class SimuMicroscope:
 
     def setRotationSpeed(self, value: int):
         self._stage_dict['a']['speed_setting'] = value
-        self._stage_dict['a']['speed'] = 10.0 * (value / 12)
+        self._stage_dict['a']['speed'] = value * 20
 
     def getFunctionMode(self) -> str:
         """Mag1, mag2, lowmag, samag, diff."""
@@ -495,6 +555,30 @@ class SimuMicroscope:
             raise TEMValueError("Must be in 'diff' mode to set DiffFocus")
         self.DiffractionFocus_value = value
 
+    def getDiffFocusValue(self, confirm_mode: bool = True) -> float:
+        """get the diffraction focus value."""
+        if not self.getFunctionMode() == 'diff':
+            raise TEMValueError("Must be in 'diff' mode to get DiffFocus")
+        return self.DiffractionFocus_value
+
+    def setDiffFocusValue(self, value: float, confirm_mode: bool = True) -> None:
+        """set the diffraction focus value."""
+        if not self.getFunctionMode() == 'diff':
+            raise TEMValueError("Must be in 'diff' mode to set DiffFocus")
+        self.DiffractionFocus_value = value
+
+    def getFocus(self) -> float:
+        """get the Defocus value."""
+        if not self.getFunctionMode() in ['lowmag', 'mag1', 'samag', 'mag2']:
+            raise TEMValueError("Must be in 'mag' mode to get Focus")
+        return self.DiffractionFocus_value
+
+    def setFocus(self, value: float) -> None:
+        """set the Defocus value."""
+        if not self.getFunctionMode() in ['lowmag', 'mag1', 'samag', 'mag2']:
+            raise TEMValueError("Must be in 'mag' mode to set Focus")
+        self.DiffractionFocus_value = value
+
     def setIntermediateLens1(self, value: int):
         """IL1."""
         self.IntermediateLens1_value = value
@@ -511,7 +595,7 @@ class SimuMicroscope:
         self.DiffractionShift_y = y
 
     def release_connection(self):
-        print('Connection to microscope released')
+        logger.info('Connection to microscope released')
 
     def isBeamBlanked(self) -> bool:
         return self.beamblank
@@ -535,7 +619,7 @@ class SimuMicroscope:
         self.intermediatelensstigmator_y = y
 
     def getObjectiveLensStigmator(self) -> Tuple[int, int]:
-        return self.objectivelensstigmator_x, self.objectivelensstigmatir_y
+        return self.objectivelensstigmator_x, self.objectivelensstigmator_y
 
     def setObjectiveLensStigmator(self, x: int, y: int):
         self.objectivelensstigmator_x = x

@@ -1,10 +1,9 @@
 import json
 import pickle
 
-from utils.config import config
+from instamaticServer.utils.config import config
 
-_conf = config()
-PROTOCOL = _conf.default_settings['tem_communication_protocol']
+PROTOCOL = config.default_settings['tem_communication_protocol']
 
 # %timeit ctrl.stage.get()
 # - pickle:  287 µs ± 10.7 µs per loop (mean ± std. dev. of 7 runs, 1000 loops each)
@@ -50,5 +49,5 @@ elif PROTOCOL == 'msgpack':
     loader = msgpack_loader
     dumper = msgpack_dumper
 else:
-    raise ValueError("No such protocol: %s" % (PROTOCOL))
+    raise ValueError("No such protocol: %s" % PROTOCOL)
 

@@ -1,6 +1,6 @@
-from utils.config import config
+from instamaticServer.utils.config import config
 
-_conf = config()
+
 _tem_interfaces = ('simulate', 'tecnai')
 
 __all__ = ['get_microscope', 'get_microscope_class']
@@ -10,30 +10,23 @@ def get_microscope_class(interface: str):
     """Grab the tem class with the given 'interface'."""
 
     if interface == 'simulate':
-        from .simu_microscope import SimuMicroscope as cls
+        from .simu_microscope import SimuMicroscope as TemCls
     elif interface == 'tecnai':
-        from .tecnai_microscope import TecnaiMicroscope as cls
+        from .tecnai_microscope import TecnaiMicroscope as TemCls
     else:
-        raise ValueError("No such microscope interface: %s" % (interface))
+        raise ValueError("No such microscope interface: %s" % interface)
 
-    return cls
+    return TemCls
 
 
 def get_microscope(name: str = None):
-    """Generic class to load microscope interface class.
+    """Return an instance of microscope interface `tecnai` or `simulate`"""
 
-    name: str
-        Specify which microscope to use, must be one of `tecnai`, `simulate`
-    use_server: bool
-        Connect to microscope server running on the host/port defined in the config file
-
-    returns: TEM interface class
-    """
     if name in _tem_interfaces:
         interface = name
     else:
-        interface = _conf.micr_interface
-        name = _conf.default_settings['microscope']
+        interface = config.micr_interface
+        name = config.default_settings['microscope']
 
     cls = get_microscope_class(interface=interface)
     tem = cls(name=name)

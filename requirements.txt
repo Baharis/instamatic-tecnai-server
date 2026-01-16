@@ -1,3 +1,4 @@
 comtypes
 PyYAML
 typing; python_version < '3.5'
+# numpy  # only used by camera server
